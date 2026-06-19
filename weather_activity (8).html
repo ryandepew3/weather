@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Weather Activity — Anoka, MN</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;font-family:Georgia,serif;background:#5BA4CF;overflow:hidden;}
+#app{display:flex;flex-direction:column;height:100vh;}
+
+/* Header */
+#hdr{background:#1B6CA8;padding:12px 22px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;position:relative;box-shadow:0 2px 8px rgba(0,0,0,0.2);}
+#hdr-title{color:#fff;font-size:19px;font-weight:500;font-family:Georgia,serif;}
+#hdr-prompt{color:#fff;font-size:27px;font-weight:700;font-family:Georgia,serif;position:absolute;left:50%;transform:translateX(-50%);text-shadow:0 1px 4px rgba(0,0,0,0.2);white-space:nowrap;}
+#refresh-btn{background:rgba(255,255,255,0.18);border:1px solid rgba(255,255,255,0.35);color:#fff;font-size:14px;padding:8px 16px;border-radius:9px;cursor:pointer;font-family:system-ui,sans-serif;}
+#refresh-btn:hover{background:rgba(255,255,255,0.3);}
+
+/* Main */
+#main{display:grid;grid-template-columns:1fr 1fr;flex:1;overflow:hidden;}
+
+/* ── LEFT: Weather ── */
+#weather-panel{background:linear-gradient(160deg,#87CEEB 0%,#5BA4CF 100%);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:18px 14px;gap:12px;border-right:3px solid rgba(255,255,255,0.4);overflow-y:auto;}
+#weather-location{color:#fff;font-size:15px;font-weight:600;font-family:system-ui;opacity:0.9;letter-spacing:0.6px;text-transform:uppercase;}
+#weather-icon{font-size:90px;line-height:1;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.15));}
+#weather-condition{color:#fff;font-size:27px;font-weight:700;text-align:center;text-shadow:0 1px 4px rgba(0,0,0,0.15);}
+#weather-temp-big{color:#fff;font-size:72px;font-weight:700;line-height:1;text-shadow:0 2px 8px rgba(0,0,0,0.2);}
+#weather-temp-big span{font-size:34px;font-weight:400;}
+#weather-wind{color:#fff;font-size:17px;font-family:system-ui;font-weight:600;background:rgba(0,0,0,0.15);padding:6px 16px;border-radius:20px;}
+
+/* Tonight box */
+#tonight-box{background:rgba(0,0,0,0.18);border-radius:16px;padding:14px 18px;width:100%;max-width:320px;text-align:center;}
+#tonight-box .tb-title{color:rgba(255,255,255,0.85);font-size:13px;font-family:system-ui;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px;}
+#tonight-box .tb-icon{font-size:48px;}
+#tonight-box .tb-cond{color:#fff;font-size:19px;font-weight:700;font-family:system-ui;margin-top:4px;}
+#tonight-box .tb-precip{color:rgba(255,255,255,0.85);font-size:14px;font-family:system-ui;margin-top:2px;font-weight:600;}
+
+/* 5-day forecast */
+#weather-forecast{background:rgba(255,255,255,0.2);border-radius:16px;padding:12px 16px;width:100%;max-width:320px;}
+#weather-forecast-title{color:#fff;font-size:13px;font-weight:700;font-family:system-ui;margin-bottom:8px;opacity:0.9;text-transform:uppercase;letter-spacing:0.5px;}
+.forecast-row{display:flex;justify-content:space-between;align-items:center;color:#fff;font-size:14px;font-family:system-ui;padding:4px 0;font-weight:500;}
+.forecast-row .fday{opacity:0.9;width:75px;}
+.forecast-row .ficon{font-size:20px;}
+.forecast-row .fprecip{opacity:0.8;font-size:13px;width:55px;text-align:center;}
+.forecast-row .fhigh{font-weight:700;width:42px;text-align:right;}
+
+/* ── RIGHT: Questions ── */
+#questions-panel{display:flex;flex-direction:column;gap:0;overflow-y:auto;background:rgba(255,255,255,0.1);}
+.q-section{padding:16px 18px;border-bottom:1px solid rgba(255,255,255,0.22);}
+.q-section:last-child{border-bottom:none;}
+.q-label{color:#fff;font-size:17px;font-weight:700;font-family:system-ui;margin-bottom:10px;text-shadow:0 1px 3px rgba(0,0,0,0.15);}
+
+/* Q1 conditions */
+#conditions-options{display:flex;flex-wrap:wrap;gap:9px;}
+.cond-btn{background:rgba(255,255,255,0.25);border:2.5px solid rgba(255,255,255,0.5);color:#fff;font-size:16px;font-weight:600;padding:11px 16px;border-radius:12px;cursor:pointer;font-family:system-ui;transition:all 0.15s;display:flex;align-items:center;gap:8px;}
+.cond-btn .cbi{font-size:24px;}
+.cond-btn:hover{background:rgba(255,255,255,0.4);}
+.cond-btn.correct{background:#3BAA35;border-color:#2D8829;}
+.cond-btn.wrong{background:#E8302A;border-color:#C4231E;}
+.cond-btn.reveal{background:rgba(59,170,53,0.55);border-color:#3BAA35;}
+.q-feedback{margin-top:9px;font-size:15px;color:#fff;font-family:system-ui;min-height:20px;font-weight:700;text-shadow:0 1px 3px rgba(0,0,0,0.2);}
+
+/* Q2 number pad */
+#numpad-wrap{display:flex;align-items:center;gap:18px;}
+#numpad-display{background:rgba(0,0,0,0.2);border-radius:14px;padding:12px 20px;min-width:130px;text-align:center;}
+#numpad-display .nd-val{font-size:46px;font-weight:700;color:#fff;line-height:1;font-family:system-ui;}
+#numpad-display .nd-unit{font-size:20px;color:rgba(255,255,255,0.85);font-family:system-ui;}
+#numpad-display .nd-hint{font-size:12px;color:rgba(255,255,255,0.65);font-family:system-ui;margin-top:3px;}
+#numpad-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;flex:1;max-width:230px;}
+.np-btn{background:rgba(255,255,255,0.25);border:2px solid rgba(255,255,255,0.45);color:#fff;font-size:20px;font-weight:700;padding:13px 0;border-radius:10px;cursor:pointer;font-family:system-ui;text-align:center;transition:background 0.1s;}
+.np-btn:hover{background:rgba(255,255,255,0.42);}
+.np-btn:active{background:rgba(255,255,255,0.6);}
+.np-btn.wide{grid-column:span 2;}
+.np-btn.check{background:#3BAA35;border-color:#2D8829;font-size:17px;}
+.np-btn.check:hover{background:#2D8829;}
+.np-btn.neg{font-size:16px;}
+#temp-feedback{margin-top:9px;font-size:15px;color:#fff;font-family:system-ui;font-weight:700;text-shadow:0 1px 3px rgba(0,0,0,0.2);min-height:20px;}
+
+/* Q3 tonight */
+#tonight-options{display:flex;gap:9px;flex-wrap:wrap;}
+.tn-btn{background:rgba(255,255,255,0.25);border:2.5px solid rgba(255,255,255,0.5);color:#fff;font-size:16px;font-weight:600;padding:11px 16px;border-radius:12px;cursor:pointer;font-family:system-ui;transition:all 0.15s;display:flex;align-items:center;gap:7px;}
+.tn-btn .tbi{font-size:22px;}
+.tn-btn:hover{background:rgba(255,255,255,0.4);}
+.tn-btn.correct{background:#3BAA35;border-color:#2D8829;}
+.tn-btn.wrong{background:#E8302A;border-color:#C4231E;}
+.tn-btn.reveal{background:rgba(59,170,53,0.55);border-color:#3BAA35;}
+
+/* Q4 clothing */
+#clothing-wrap{display:flex;gap:14px;align-items:flex-start;}
+#wardrobe{display:flex;flex-wrap:wrap;gap:8px;flex:1;align-content:flex-start;}
+.ci{background:rgba(255,255,255,0.22);border:2.5px solid rgba(255,255,255,0.45);border-radius:12px;padding:8px 6px;cursor:grab;font-size:13px;font-family:system-ui;color:#fff;display:flex;flex-direction:column;align-items:center;gap:3px;user-select:none;touch-action:none;transition:transform 0.1s,opacity 0.1s;width:74px;}
+.ci .ci-icon{font-size:32px;}
+.ci .ci-lbl{font-size:11px;text-align:center;line-height:1.2;font-weight:600;}
+.ci:hover{transform:scale(1.07);background:rgba(255,255,255,0.35);}
+.ci.used{opacity:0.3;border-style:dashed;cursor:default;}
+
+/* Human form + drop zones */
+#figure-wrap{position:relative;flex-shrink:0;width:190px;}
+#figure-svg{width:190px;height:310px;}
+.drop-zone{position:absolute;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px;transition:background 0.15s;}
+.drop-zone.over{background:rgba(255,255,255,0.35);}
+.drop-zone.filled{background:rgba(255,255,255,0.1);}
+#dz-head  {top:0px;  left:53px; width:64px;height:64px;display:block;}
+#dz-torso {top:55px; left:0px;  width:190px;height:140px;border-radius:14px;}
+#dz-legs  {top:190px;left:10px; width:170px;height:96px;border-radius:10px;}
+#dz-feet  {top:266px;left:5px;  width:180px;height:46px;border-radius:10px;}
+.dz-item  {font-size:72px;pointer-events:none;line-height:1;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);}
+.dz-item-torso{font-size:130px;}
+.dz-item-legs{font-size:90px;}
+.dz-item-feet{font-size:60px;}
+.dz-item-hat{font-size:46px;top:-20px;left:50%;transform:translateX(-50%);}
+.dz-item-eyes{font-size:32px;top:20px;left:50%;transform:translateX(-50%);}
+#clothing-feedback{margin-top:9px;font-size:15px;color:#fff;font-family:system-ui;font-weight:700;text-shadow:0 1px 3px rgba(0,0,0,0.2);min-height:20px;}
+#done-dressing-btn{margin-top:12px;background:#3BAA35;border:2px solid #2D8829;color:#fff;font-size:15px;font-weight:700;padding:11px 24px;border-radius:12px;cursor:pointer;font-family:system-ui;}
+#done-dressing-btn:hover{background:#2D8829;}
+#missing-fb{margin-top:8px;font-size:14px;color:#fff;font-family:system-ui;font-weight:700;background:rgba(232,48,42,0.5);border:2px solid rgba(232,48,42,0.8);padding:8px 14px;border-radius:10px;display:none;}
+#missing-fb.show{display:block;}
+
+#reset-btn{margin:14px 18px 16px;background:rgba(255,255,255,0.2);border:1.5px solid rgba(255,255,255,0.4);color:#fff;font-size:15px;padding:9px 20px;border-radius:10px;cursor:pointer;font-family:system-ui;align-self:flex-start;font-weight:600;}
+#reset-btn:hover{background:rgba(255,255,255,0.35);}
+
+/* Celebration overlay */
+#celebrate-overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:500;pointer-events:none;}
+#celebrate-overlay.show{display:flex;}
+#celebrate-card{background:rgba(255,255,255,0.97);border-radius:28px;padding:40px 60px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,0.35);transform:scale(0.3);opacity:0;animation:popIn 0.5s cubic-bezier(.34,1.56,.64,1) forwards;pointer-events:all;}
+@keyframes popIn{0%{transform:scale(0.3) rotate(-8deg);opacity:0;}60%{transform:scale(1.08) rotate(2deg);opacity:1;}100%{transform:scale(1) rotate(0);opacity:1;}}
+#celebrate-emoji{font-size:80px;line-height:1;margin-bottom:8px;animation:bounce 0.6s ease-in-out infinite alternate;}
+@keyframes bounce{from{transform:translateY(0);}to{transform:translateY(-14px);}}
+#celebrate-title{font-size:38px;font-weight:700;color:#1B6CA8;font-family:Georgia,serif;margin-bottom:6px;}
+#celebrate-sub{font-size:16px;color:#555;font-family:system-ui;margin-bottom:18px;}
+#celebrate-close{background:#3BAA35;border:none;color:#fff;font-size:15px;font-weight:600;padding:10px 26px;border-radius:10px;cursor:pointer;font-family:system-ui;}
+#celebrate-close:hover{background:#2D8829;}
+.confetti{position:absolute;top:-10px;border-radius:2px;animation:fall linear forwards;}
+@keyframes fall{to{transform:translateY(110vh) rotate(360deg);opacity:0.3;}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="hdr">
+    <span id="hdr-title">🌤️ Weather Watch — Anoka, MN</span>
+    <span id="hdr-prompt">What's the weather like today?</span>
+    <button id="refresh-btn" onclick="fetchWeather()">⟳ Refresh</button>
+  </div>
+
+  <div id="main">
+
+    <!-- LEFT -->
+    <div id="weather-panel">
+      <div id="weather-location">Anoka, Minnesota</div>
+      <div id="weather-icon">⛅</div>
+      <div id="weather-condition">Loading...</div>
+      <div id="weather-temp-big">--<span>°F</span></div>
+      <div id="weather-wind">💨 Wind: -- mph</div>
+
+      <div id="tonight-box">
+        <div class="tb-title">🌧️ Today's Forecast</div>
+        <div class="tb-icon" id="tb-icon">--</div>
+        <div class="tb-cond" id="tb-cond">Loading...</div>
+        <div class="tb-precip" id="tb-precip"></div>
+      </div>
+
+
+    </div>
+
+    <!-- RIGHT -->
+    <div id="questions-panel">
+
+      <!-- Q1 -->
+      <div class="q-section">
+        <div class="q-label">❓ What are the current conditions?</div>
+        <div id="conditions-options">
+          <button class="cond-btn" onclick="checkCond(this,'sunny')"><span class="cbi">☀️</span>Sunny</button>
+          <button class="cond-btn" onclick="checkCond(this,'partly_cloudy')"><span class="cbi">⛅</span>Partly Cloudy</button>
+          <button class="cond-btn" onclick="checkCond(this,'cloudy')"><span class="cbi">☁️</span>Cloudy</button>
+          <button class="cond-btn" onclick="checkCond(this,'rainy')"><span class="cbi">🌧️</span>Rainy</button>
+          <button class="cond-btn" onclick="checkCond(this,'snowy')"><span class="cbi">❄️</span>Snowy</button>
+          <button class="cond-btn" onclick="checkCond(this,'stormy')"><span class="cbi">⛈️</span>Stormy</button>
+          <button class="cond-btn" onclick="checkCond(this,'foggy')"><span class="cbi">🌫️</span>Foggy</button>
+          <button class="cond-btn" onclick="checkCond(this,'windy')"><span class="cbi">💨</span>Windy</button>
+        </div>
+        <div class="q-feedback" id="cond-fb"></div>
+      </div>
+
+      <!-- Q2 number pad -->
+      <div class="q-section">
+        <div class="q-label">🌡️ What is the current temperature in °F?</div>
+        <div id="numpad-wrap">
+          <div id="numpad-display">
+            <div class="nd-val" id="nd-val">--</div>
+            <div class="nd-unit">°F</div>
+            <div class="nd-hint">tap numbers</div>
+          </div>
+          <div id="numpad-grid">
+            <button class="np-btn" onclick="npTap('7')">7</button>
+            <button class="np-btn" onclick="npTap('8')">8</button>
+            <button class="np-btn" onclick="npTap('9')">9</button>
+            <button class="np-btn" onclick="npTap('4')">4</button>
+            <button class="np-btn" onclick="npTap('5')">5</button>
+            <button class="np-btn" onclick="npTap('6')">6</button>
+            <button class="np-btn" onclick="npTap('1')">1</button>
+            <button class="np-btn" onclick="npTap('2')">2</button>
+            <button class="np-btn" onclick="npTap('3')">3</button>
+            <button class="np-btn neg" onclick="npTap('-')">+/−</button>
+            <button class="np-btn" onclick="npTap('0')">0</button>
+            <button class="np-btn" onclick="npTap('⌫')">⌫</button>
+            <button class="np-btn wide check" onclick="npCheck()">✓ Check</button>
+            <button class="np-btn" onclick="npTap('C')">C</button>
+          </div>
+        </div>
+        <div class="q-feedback" id="temp-feedback"></div>
+      </div>
+
+      <!-- Q3 tonight -->
+      <div class="q-section">
+        <div class="q-label">🌙 Will there be rain or snow today or tonight?</div>
+        <div id="tonight-options">
+          <button class="tn-btn" onclick="checkTonight(this,'no')"><span class="tbi">✨</span>No</button>
+          <button class="tn-btn" onclick="checkTonight(this,'probably_not')"><span class="tbi">🙂</span>Probably Not</button>
+          <button class="tn-btn" onclick="checkTonight(this,'maybe')"><span class="tbi">🤔</span>Maybe</button>
+          <button class="tn-btn" onclick="checkTonight(this,'probably')"><span class="tbi">🌦️</span>Probably</button>
+          <button class="tn-btn" onclick="checkTonight(this,'yes')"><span class="tbi">🌧️</span>Yes</button>
+        </div>
+        <div class="q-feedback" id="tonight-fb"></div>
+      </div>
+
+      <!-- Q4 clothing -->
+      <div class="q-section">
+        <div class="q-label">👕 Dress for today's weather — drag clothes onto the figure!</div>
+        <div id="clothing-wrap">
+          <div id="wardrobe"></div>
+          <div id="figure-wrap">
+            <svg id="figure-svg" viewBox="0 0 170 310" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="85" cy="35" r="28" fill="rgba(255,255,255,0.28)" stroke="rgba(255,255,255,0.55)" stroke-width="2"/>
+              <rect x="76" y="60" width="18" height="16" rx="4" fill="rgba(255,255,255,0.28)" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/>
+              <rect x="34" y="78" width="102" height="96" rx="16" fill="rgba(255,255,255,0.28)" stroke="rgba(255,255,255,0.55)" stroke-width="2"/>
+              <rect x="10" y="84" width="26" height="80" rx="13" fill="rgba(255,255,255,0.22)" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/>
+              <rect x="134" y="84" width="26" height="80" rx="13" fill="rgba(255,255,255,0.22)" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/>
+              <rect x="38" y="182" width="40" height="90" rx="13" fill="rgba(255,255,255,0.22)" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/>
+              <rect x="92" y="182" width="40" height="90" rx="13" fill="rgba(255,255,255,0.22)" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/>
+              <ellipse cx="56" cy="280" rx="24" ry="13" fill="rgba(255,255,255,0.22)" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/>
+              <ellipse cx="114" cy="280" rx="24" ry="13" fill="rgba(255,255,255,0.22)" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/>
+            </svg>
+            <div class="drop-zone" id="dz-head"  data-zone="head"  ondragover="dzOver(event)" ondragleave="dzLeave(event)" ondrop="dzDrop(event,'head')"></div>
+            <div class="drop-zone" id="dz-torso" data-zone="torso" ondragover="dzOver(event)" ondragleave="dzLeave(event)" ondrop="dzDrop(event,'torso')"></div>
+            <div class="drop-zone" id="dz-legs"  data-zone="legs"  ondragover="dzOver(event)" ondragleave="dzLeave(event)" ondrop="dzDrop(event,'legs')"></div>
+            <div class="drop-zone" id="dz-feet"  data-zone="feet"  ondragover="dzOver(event)" ondragleave="dzLeave(event)" ondrop="dzDrop(event,'feet')"></div>
+          </div>
+        </div>
+        <div class="q-feedback" id="clothing-fb"></div>
+        <button id="done-dressing-btn" onclick="checkAllComplete()">✓ I'm Done!</button>
+        <div id="missing-fb"></div>
+      </div>
+
+      <button id="reset-btn" onclick="resetAll()">↺ Reset all answers</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const LAT=45.1975, LON=-93.3872;
+let wx = null;
+
+const CMAP = {
+  sunny:        {icon:"☀️", text:"Sunny",         keys:["sunny","clear"]},
+  partly_cloudy:{icon:"⛅",text:"Partly Cloudy",  keys:["partly","partly_cloudy","partly_sunny"]},
+  cloudy:       {icon:"☁️", text:"Cloudy",         keys:["cloudy","overcast"]},
+  rainy:        {icon:"🌧️",text:"Rainy",           keys:["rain","drizzle","shower"]},
+  snowy:        {icon:"❄️", text:"Snowy",           keys:["snow","sleet","blizzard","flurr"]},
+  stormy:       {icon:"⛈️",text:"Stormy",          keys:["storm","thunder"]},
+  foggy:        {icon:"🌫️",text:"Foggy",            keys:["fog","mist","haze"]},
+  windy:        {icon:"💨", text:"Windy",           keys:["wind"]},
+};
+
+function wcode(c){
+  if(c===0)          return "sunny";
+  if(c<=2)           return "partly_cloudy";
+  if(c<=3)           return "cloudy";
+  if(c>=45&&c<=48)   return "foggy";
+  if(c>=51&&c<=67)   return "rainy";
+  if(c>=71&&c<=77)   return "snowy";
+  if(c>=80&&c<=82)   return "rainy";
+  if(c>=85&&c<=86)   return "snowy";
+  if(c>=95)          return "stormy";
+  return "partly_cloudy";
+}
+
+async function fetchWeather(){
+  try{
+    const url=`https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&current=temperature_2m,weathercode,wind_speed_10m&hourly=temperature_2m,weathercode,precipitation_probability&daily=temperature_2m_max,precipitation_probability_max,weathercode&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=America%2FChicago&forecast_days=5`;
+    const d = await (await fetch(url)).json();
+    const tempF = Math.round(d.current.temperature_2m);
+    const cond  = wcode(d.current.weathercode);
+    const windMph = Math.round(d.current.wind_speed_10m);
+    const isWindy = windMph >= 15; // breezy/windy threshold
+
+    // Use today's overall max precipitation chance (covers both daytime and tonight)
+    const todayPrec = d.daily.precipitation_probability_max[0];
+    const todayDayCode = d.daily.weathercode[0];
+    const todayCond = wcode(todayDayCode);
+    const todayRain = todayPrec >= 40 && todayCond !== "snowy";
+    const todaySnow = todayCond === "snowy";
+
+    wx = {temp:tempF, condition:cond, windMph, isWindy, tonightRain:todayRain, tonightSnow:todaySnow, tonightPrec:todayPrec, tonightCond:todayCond, dailyHigh:Math.round(d.daily.temperature_2m_max[0])};
+
+    document.getElementById("weather-icon").textContent = CMAP[cond].icon;
+    document.getElementById("weather-condition").textContent = CMAP[cond].text;
+    document.getElementById("weather-temp-big").innerHTML = tempF+"<span>°F</span>";
+    document.getElementById("weather-wind").textContent = "💨 Wind: "+windMph+" mph"+(isWindy?" (Windy!)":"");
+
+    document.getElementById("tb-icon").textContent = CMAP[todayCond].icon;
+    document.getElementById("tb-cond").textContent = CMAP[todayCond].text;
+    document.getElementById("tb-precip").textContent = todayPrec+"% chance of precipitation";
+
+    buildClothing();
+    resetAnswers();
+  }catch(e){
+    wx={temp:69,condition:"partly_cloudy",windMph:8,isWindy:false,tonightRain:false,tonightSnow:false,tonightPrec:20,tonightCond:"partly_cloudy",dailyHigh:70};
+    document.getElementById("weather-icon").textContent="⛅";
+    document.getElementById("weather-condition").textContent="Partly Cloudy";
+    document.getElementById("weather-temp-big").innerHTML="69<span>°F</span>";
+    document.getElementById("weather-wind").textContent="💨 Wind: 8 mph";
+    document.getElementById("tb-icon").textContent="🌙";
+    document.getElementById("tb-cond").textContent="Mostly Clear";
+    document.getElementById("tb-precip").textContent="20% chance of precipitation";
+    buildClothing(); resetAnswers();
+  }
+}
+
+// ── Q1: lenient condition matching ───────────────────────────
+function checkCond(btn,chosen){
+  if(!wx)return;
+  // Build the set of acceptable correct answers
+  let acceptable = [wx.condition];
+  if(wx.isWindy) acceptable.push("windy");
+  if(wx.condition === "stormy") acceptable.push("rainy"); // storm implies rain too
+  // Sunny / Partly Cloudy is a fuzzy real-world boundary — accept either as a near miss
+  if(wx.condition === "sunny")         acceptable.push("partly_cloudy");
+  if(wx.condition === "partly_cloudy") acceptable.push("sunny","cloudy");
+  if(wx.condition === "cloudy")        acceptable.push("partly_cloudy");
+
+  document.querySelectorAll(".cond-btn").forEach(b=>b.classList.remove("correct","wrong","reveal"));
+
+  completed.cond = true;
+  if(acceptable.includes(chosen)){
+    btn.classList.add("correct");
+    document.getElementById("cond-fb").textContent="✅ Correct! "+CMAP[wx.condition].icon+" "+CMAP[wx.condition].text+(wx.isWindy?" and windy 💨":"");
+  } else {
+    btn.classList.add("wrong");
+    document.querySelectorAll(".cond-btn").forEach(b=>{
+      const m=b.getAttribute("onclick").match(/'([^']+)'\)/);
+      if(m && acceptable.includes(m[1])) b.classList.add("reveal");
+    });
+    document.getElementById("cond-fb").textContent="Not quite — the correct answer(s) are shown in green!";
+  }
+}
+
+// ── Q2 number pad ─────────────────────────────────────────────
+let npVal="";
+function npTap(k){
+  if(k==="C"){npVal=""; document.getElementById("nd-val").textContent="--"; document.getElementById("temp-feedback").textContent=""; return;}
+  if(k==="⌫"){npVal=npVal.slice(0,-1)||""; document.getElementById("nd-val").textContent=npVal||"--"; return;}
+  if(k==="-"){npVal=npVal.startsWith("-")?npVal.slice(1):"-"+npVal; document.getElementById("nd-val").textContent=npVal||"--"; return;}
+  if(npVal.replace("-","").length>=3)return;
+  npVal+=k;
+  document.getElementById("nd-val").textContent=npVal;
+}
+function npCheck(){
+  if(!wx||!npVal||npVal==="-")return;
+  const guess=parseInt(npVal);
+  const actual=wx.temp;
+  const diff=Math.abs(guess-actual);
+  const fb=document.getElementById("temp-feedback");
+  if(diff===0)      fb.textContent=`🎯 Exactly right! It's ${actual}°F!`;
+  else if(diff<=2)  fb.textContent=`🔥 So close! It's actually ${actual}°F`;
+  else if(diff<=5)  fb.textContent=`👍 Really close! It's ${actual}°F`;
+  else if(diff<=10) fb.textContent=`📍 Good try! It's actually ${actual}°F`;
+  else if(guess<actual) fb.textContent=`⬆️ Too cold! It's ${actual}°F — warmer than that!`;
+  else              fb.textContent=`⬇️ Too warm! It's ${actual}°F — cooler than that!`;
+  completed.temp = true;
+}
+
+// ── Q3 tonight — lenient probability scale ────────────────────
+function checkTonight(btn,chosen){
+  if(!wx)return;
+  const p=wx.tonightPrec;
+  let correct, acceptable=[];
+  if(p<=15)      { correct="no";           acceptable=["probably_not"]; }
+  else if(p<=35) { correct="probably_not"; acceptable=["no","maybe"]; }
+  else if(p<=60) { correct="maybe";        acceptable=["probably_not","probably"]; }
+  else if(p<=80) { correct="probably";     acceptable=["maybe","yes"]; }
+  else           { correct="yes";          acceptable=["probably"]; }
+
+  document.querySelectorAll(".tn-btn").forEach(b=>b.classList.remove("correct","wrong","reveal"));
+  completed.tonight = true;
+
+  if(chosen===correct){
+    btn.classList.add("correct");
+    document.getElementById("tonight-fb").textContent="✅ Great answer! Tonight shows "+p+"% chance of precipitation.";
+  } else if(acceptable.includes(chosen)){
+    btn.classList.add("correct");
+    document.getElementById("tonight-fb").textContent="✅ Good reasoning! Tonight shows "+p+"% — that works too!";
+  } else {
+    btn.classList.add("wrong");
+    document.querySelectorAll(".tn-btn").forEach(b=>{
+      const mv=b.getAttribute("onclick").match(/'([^']+)'\)/);
+      if(mv&&mv[1]===correct) b.classList.add("reveal");
+    });
+    document.getElementById("tonight-fb").textContent="Hmm — tonight shows "+p+"% chance of precipitation. Check the forecast on the left!";
+  }
+}
+
+// ── Q4 clothing — simplified, accurate icons ───────────────────
+const CLOTHES=[
+  {id:"cap",     icon:"🧢", lbl:"Cap",         zone:"head", slot:"hat"},
+  {id:"beanie",  icon:"<svg viewBox=\"0 0 64 64\" width=\"1em\" height=\"1em\" style=\"display:inline-block;vertical-align:-0.15em;\"><path d=\"M12 38 Q12 14 32 14 Q52 14 52 38 L52 42 Q32 36 12 42 Z\" fill=\"#4A6FA5\"/><rect x=\"10\" y=\"38\" width=\"44\" height=\"10\" rx=\"5\" fill=\"#3A5A8A\"/><circle cx=\"32\" cy=\"14\" r=\"5\" fill=\"#E8302A\"/></svg>", lbl:"Beanie",      zone:"head", slot:"hat"},
+  {id:"sungls",  icon:"🕶️", lbl:"Sunglasses",  zone:"head", slot:"eyes"},
+  {id:"tshirt",  icon:"👕", lbl:"T-Shirt",     zone:"torso"},
+  {id:"coat",    icon:"🧥", lbl:"Winter Coat", zone:"torso"},
+  {id:"rainjkt", icon:"<svg viewBox=\"0 0 64 64\" width=\"1em\" height=\"1em\" style=\"display:inline-block;vertical-align:-0.15em;\"><path d=\"M22 8 L42 8 L46 16 L52 20 L48 34 L42 30 L42 56 L22 56 L22 30 L16 34 L12 20 L18 16 Z\" fill=\"#F5C800\" stroke=\"#D4AB00\" stroke-width=\"1.5\"/><circle cx=\"32\" cy=\"10\" r=\"3\" fill=\"#3d2f00\"/><line x1=\"32\" y1=\"16\" x2=\"32\" y2=\"22\" stroke=\"#D4AB00\" stroke-width=\"1.5\"/></svg>", lbl:"Rain Jacket", zone:"torso"},
+  {id:"jeans",   icon:"👖", lbl:"Pants",       zone:"legs"},
+  {id:"shorts",  icon:"🩳", lbl:"Shorts",      zone:"legs"},
+  {id:"sneakers",icon:"👟", lbl:"Sneakers",    zone:"feet"},
+  {id:"boots",   icon:"🥾", lbl:"Boots",       zone:"feet"},
+  {id:"sandals", icon:"👡", lbl:"Sandals",     zone:"feet"},
+];
+
+let outfit={head_hat:null,head_eyes:null,torso:null,legs:null,feet:null};
+let dragCI=null;
+
+function buildClothing(){
+  outfit={head_hat:null,head_eyes:null,torso:null,legs:null,feet:null};
+  const w=document.getElementById("wardrobe"); w.innerHTML="";
+  ["head","torso","legs","feet"].forEach(z=>{
+    const dz=document.getElementById("dz-"+z);
+    dz.innerHTML=""; dz.classList.remove("filled");
+  });
+  document.getElementById("clothing-fb").textContent="";
+
+  CLOTHES.forEach(c=>{
+    const el=document.createElement("div");
+    el.className="ci"; el.dataset.id=c.id; el.draggable=true;
+    el.innerHTML=`<span class="ci-icon">${c.icon}</span><span class="ci-lbl">${c.lbl}</span>`;
+    el.addEventListener("dragstart",()=>{dragCI=c.id; el.classList.add("dragging");});
+    el.addEventListener("dragend",()=>el.classList.remove("dragging"));
+    el.addEventListener("touchstart",()=>{dragCI=c.id;},{passive:true});
+    el.addEventListener("touchend",e=>{
+      const t=e.changedTouches[0];
+      const target=document.elementFromPoint(t.clientX,t.clientY);
+      const dz=target?.closest(".drop-zone");
+      if(dz) placeOnFigure(c.id, dz.dataset.zone);
+      dragCI=null;
+    });
+    w.appendChild(el);
+  });
+}
+
+function dzOver(e){e.preventDefault();e.currentTarget.classList.add("over");}
+function dzLeave(e){e.currentTarget.classList.remove("over");}
+function dzDrop(e,zone){e.preventDefault();e.currentTarget.classList.remove("over");if(dragCI)placeOnFigure(dragCI,zone);dragCI=null;}
+
+function renderHeadZone(){
+  const dz=document.getElementById("dz-head");
+  let html2="";
+  if(outfit.head_hat){
+    const c=CLOTHES.find(x=>x.id===outfit.head_hat);
+    if(c) html2 += `<div class="dz-item dz-item-hat">${c.icon}</div>`;
+  }
+  if(outfit.head_eyes){
+    const c=CLOTHES.find(x=>x.id===outfit.head_eyes);
+    if(c) html2 += `<div class="dz-item dz-item-eyes">${c.icon}</div>`;
+  }
+  dz.innerHTML = html2;
+  dz.classList.toggle("filled", !!(outfit.head_hat || outfit.head_eyes));
+}
+
+function placeOnFigure(id, zone){
+  const cloth=CLOTHES.find(c=>c.id===id);
+  if(!cloth)return;
+
+  if(zone === "head"){
+    const key = cloth.slot === "eyes" ? "head_eyes" : "head_hat";
+    if(outfit[key]){
+      const old=document.querySelector(`.ci[data-id="${outfit[key]}"]`);
+      if(old) old.classList.remove("used");
+    }
+    for(const z of ["head_hat","head_eyes","torso","legs","feet"]){
+      if(outfit[z]===id){ outfit[z]=null; }
+    }
+    outfit[key]=id;
+    renderHeadZone();
+    const wardEl=document.querySelector(`.ci[data-id="${id}"]`);
+    if(wardEl) wardEl.classList.add("used");
+    checkClothingFeedback();
+    return;
+  }
+
+  const dz=document.getElementById("dz-"+zone);
+  if(outfit[zone]){
+    const old=document.querySelector(`.ci[data-id="${outfit[zone]}"]`);
+    if(old) old.classList.remove("used");
+  }
+  for(const z of ["head_hat","head_eyes","torso","legs","feet"]){
+    if(outfit[z]===id){ outfit[z]=null; }
+  }
+  renderHeadZone();
+  outfit[zone]=id;
+  dz.innerHTML=`<div class="dz-item dz-item-${zone}">${cloth.icon}</div>`;
+  dz.classList.add("filled");
+  const wardEl=document.querySelector(`.ci[data-id="${id}"]`);
+  if(wardEl) wardEl.classList.add("used");
+  checkClothingFeedback();
+}
+
+function removeFromZone(zone){
+  if(zone === "head") return; // handled separately by removeHeadItem
+  if(!outfit[zone]) return;
+  const wardEl=document.querySelector(`.ci[data-id="${outfit[zone]}"]`);
+  if(wardEl) wardEl.classList.remove("used");
+  outfit[zone]=null;
+  document.getElementById("dz-"+zone).innerHTML="";
+  document.getElementById("dz-"+zone).classList.remove("filled");
+  checkClothingFeedback();
+}
+
+function removeHeadItem(slotKey){
+  if(!outfit[slotKey]) return;
+  const wardEl=document.querySelector(`.ci[data-id="${outfit[slotKey]}"]`);
+  if(wardEl) wardEl.classList.remove("used");
+  outfit[slotKey]=null;
+  renderHeadZone();
+  checkClothingFeedback();
+}
+
+function checkClothingFeedback(){
+  if(!wx)return;
+  const temp=wx.temp, rain=wx.tonightRain||wx.condition==="rainy"||wx.condition==="stormy";
+  const cold=temp<40, hot=temp>=80;
+  const has=id=>Object.values(outfit).includes(id);
+  const hasAny=(...ids)=>ids.some(has);
+  const filled=Object.values(outfit).filter(Boolean).length;
+  completed.clothing = filled >= 2;
+  if(filled===0){document.getElementById("clothing-fb").textContent="";return;}
+
+  if(cold && has("shorts"))       {document.getElementById("clothing-fb").textContent="🥶 Shorts in the cold? You might freeze!"; return;}
+  if(hot  && has("coat"))         {document.getElementById("clothing-fb").textContent="🥵 A winter coat when it's hot? You'll overheat!"; return;}
+  if(rain && !hasAny("rainjkt","boots")){document.getElementById("clothing-fb").textContent="☔ It might rain — consider a rain jacket or boots!"; return;}
+  if(cold && !hasAny("coat"))     {document.getElementById("clothing-fb").textContent="🧥 It's cold out — you'll want a coat!"; return;}
+  if(filled>=3) document.getElementById("clothing-fb").textContent="😎 Great outfit for today's weather!";
+  else document.getElementById("clothing-fb").textContent="👍 Keep dressing your figure!";
+}
+
+// ── Completion tracking & celebration ──────────────────────────
+let completed = {cond:false, temp:false, tonight:false, clothing:false};
+
+function checkAllComplete(){
+  const missingFb = document.getElementById("missing-fb");
+  const missing = [];
+  if(!completed.cond)     missing.push("Current Conditions");
+  if(!completed.temp)     missing.push("Temperature");
+  if(!completed.tonight)  missing.push("Rain or Snow Today/Tonight");
+  if(!completed.clothing) missing.push("Dress the Figure (at least 2 items)");
+
+  if(missing.length === 0){
+    missingFb.classList.remove("show");
+    showCelebration();
+  } else {
+    missingFb.textContent = "Almost there! Still need: " + missing.join(", ");
+    missingFb.classList.add("show");
+  }
+}
+
+function showCelebration(){
+  const ov = document.getElementById("celebrate-overlay");
+  spawnConfetti();
+  ov.classList.add("show");
+}
+function closeCelebration(){
+  document.getElementById("celebrate-overlay").classList.remove("show");
+  document.querySelectorAll(".confetti").forEach(c=>c.remove());
+}
+function spawnConfetti(){
+  const colors=["#E8302A","#F5C800","#3BAA35","#2B72CC","#8B5CF6","#EC4899"];
+  const ov=document.getElementById("celebrate-overlay");
+  document.querySelectorAll(".confetti").forEach(c=>c.remove());
+  for(let i=0;i<60;i++){
+    const c=document.createElement("div");
+    c.className="confetti";
+    const size=6+Math.random()*8;
+    c.style.width=size+"px";
+    c.style.height=(size*0.4)+"px";
+    c.style.left=Math.random()*100+"%";
+    c.style.background=colors[Math.floor(Math.random()*colors.length)];
+    c.style.animationDuration=(2+Math.random()*2)+"s";
+    c.style.animationDelay=(Math.random()*0.5)+"s";
+    ov.appendChild(c);
+  }
+}
+
+// ── Reset ─────────────────────────────────────────────────────
+function resetAnswers(){
+  document.querySelectorAll(".cond-btn").forEach(b=>b.classList.remove("correct","wrong","reveal"));
+  document.getElementById("cond-fb").textContent="";
+  npVal=""; document.getElementById("nd-val").textContent="--"; document.getElementById("temp-feedback").textContent="";
+  document.querySelectorAll(".tn-btn").forEach(b=>b.classList.remove("correct","wrong","reveal"));
+  document.getElementById("tonight-fb").textContent="";
+  buildClothing();
+  completed = {cond:false, temp:false, tonight:false, clothing:false};
+  document.getElementById("missing-fb").classList.remove("show");
+  closeCelebration();
+}
+function resetAll(){resetAnswers();}
+
+fetchWeather();
+</script>
+
+<div id="celebrate-overlay">
+  <div id="celebrate-card">
+    <div id="celebrate-emoji">🌈</div>
+    <div id="celebrate-title">Great Job!</div>
+    <div id="celebrate-sub">You completed today's weather check-in!</div>
+    <button id="celebrate-close" onclick="closeCelebration()">Awesome! ✓</button>
+  </div>
+</div>
+</body>
+</html>
